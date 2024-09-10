@@ -2101,7 +2101,6 @@ pub struct CanceledOrder {
     pub order_link_id: String,
 }
 
-
 #[derive(Clone)]
 pub enum RequestType<'a> {
     Create(BatchPlaceRequest<'a>),
@@ -2145,9 +2144,12 @@ impl<'a> PositionRequest<'a> {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InfoResponse {
+    #[serde(rename = "retCode")]
     pub ret_code: i32,
+    #[serde(rename = "retMsg")]
     pub ret_msg: String,
     pub result: InfoResult,
+    #[serde(rename = "retExtInfo")]
     pub ret_ext_info: Empty,
     pub time: u64,
 }
@@ -2165,6 +2167,7 @@ pub struct InfoResult {
 pub struct PositionInfo {
     #[serde(rename = "positionIdx")]
     pub position_idx: i32,
+    #[serde(rename = "riskId")]
     pub risk_id: i32,
     #[serde(rename = "riskLimitValue", with = "string_to_float")]
     pub risk_limit_value: f64,
@@ -2172,7 +2175,7 @@ pub struct PositionInfo {
     pub side: String,
     #[serde(with = "string_to_float")]
     pub size: f64,
-    #[serde(with = "string_to_float")]
+    #[serde(rename = "avgPrice", with = "string_to_float")]
     pub avg_price: f64,
     #[serde(rename = "positionValue", with = "string_to_float")]
     pub position_value: f64,
@@ -2200,17 +2203,20 @@ pub struct PositionInfo {
     pub position_im: f64,
     #[serde(rename = "tpslMode")]
     pub tpsl_mode: String,
+    #[serde(rename = "takeProfit")]
     pub take_profit: String,
+    #[serde(rename = "stopLoss")]
     pub stop_loss: String,
+    #[serde(rename = "trailingStop")]
     pub trailing_stop: String,
     #[serde(rename = "unrealisedPnl", with = "string_to_float")]
     pub unrealised_pnl: f64,
     #[serde(rename = "cumRealisedPnl", with = "string_to_float")]
     pub cum_realised_pnl: f64,
-    pub seq: u64,
+    pub seq: i64,
     #[serde(rename = "isReduceOnly")]
     pub is_reduce_only: bool,
-    #[serde(rename = "mmrSysUpdateTime")]
+    #[serde(rename = "mmrSysUpdatedTime")]
     pub mmr_sys_update_time: String,
     #[serde(rename = "leverageSysUpdatedTime")]
     pub leverage_sys_updated_time: String,
@@ -2218,6 +2224,8 @@ pub struct PositionInfo {
     pub created_time: String,
     #[serde(rename = "updatedTime")]
     pub updated_time: String,
+    #[serde(rename = "sessionAvgPrice")]
+    pub session_avg_price: String,
 }
 
 #[derive(Clone, Default)]
@@ -3260,7 +3268,7 @@ pub enum WebsocketEvents {
     OrderEvent(OrderEvent),
     Wallet(WalletEvent),
     TradeStream(TradeStreamEvent),
-    FastExecEvent(FastExecution)
+    FastExecEvent(FastExecution),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -3685,13 +3693,12 @@ pub struct ExecutionData {
 unsafe impl Send for ExecutionData {}
 unsafe impl Sync for ExecutionData {}
 
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FastExecution {
     pub topic: String,
     #[serde(rename = "creationTime")]
     pub creation_time: u64,
-    pub data:  Vec<FastExecData>
+    pub data: Vec<FastExecData>,
 }
 
 unsafe impl Send for FastExecution {}
@@ -3718,8 +3725,7 @@ pub struct FastExecData {
 }
 
 unsafe impl Send for FastExecData {}
-unsafe impl Sync for  FastExecData {}
-
+unsafe impl Sync for FastExecData {}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OrderData {
@@ -3943,6 +3949,9 @@ mod string_to_float {
         D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
+        if s.is_empty() {
+            return Ok(0.0);
+        }
         s.parse::<f64>().map_err(serde::de::Error::custom)
     }
 }
