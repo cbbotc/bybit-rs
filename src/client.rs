@@ -36,7 +36,6 @@ pub struct Client<'a> {
 }
 
 impl<'a> Client<'_> {
-
     /// Create a new instance of `Client`.
     ///
     /// # Arguments
@@ -93,7 +92,7 @@ impl<'a> Client<'_> {
         request: Option<String>,
     ) -> Result<T, BybitError> {
         // Construct the full URL
-        let mut url = format!("{}/{}", self.host, endpoint.as_ref());
+        let mut url = format!("{}{}", self.host, endpoint.as_ref());
         // If there is a query string, append it to the URL
         if let Some(request) = request {
             if !request.is_empty() {
@@ -126,7 +125,7 @@ impl<'a> Client<'_> {
         request: Option<String>,
     ) -> Result<T, BybitError> {
         // Construct the full URL
-        let mut url: String = format!("{}/{}", self.host, endpoint.as_ref());
+        let mut url: String = format!("{}{}", self.host, endpoint.as_ref());
         // If there is a query string, append it to the URL
         let query_string = request.unwrap_or_default();
         if !query_string.is_empty() {
@@ -162,7 +161,7 @@ impl<'a> Client<'_> {
         request: Option<String>,
     ) -> Result<T, BybitError> {
         // Construct the URL by appending the base host and endpoint to it
-        let mut url: String = format!("{}/{}", self.host, endpoint.as_ref());
+        let mut url: String = format!("{}{}", self.host, endpoint.as_ref());
 
         // If a request is provided, append it to the URL as a query string
         if let Some(request) = request {
@@ -286,7 +285,6 @@ impl<'a> Client<'_> {
         Ok(custom_headers).map_err(|e| BybitError::ReqError(e))
     }
 
-
     /// Signs a POST request message.
     ///
     /// # Arguments
@@ -309,18 +307,18 @@ impl<'a> Client<'_> {
     fn sign_message(&self, timestamp: &str, recv_window: &str, request: Option<String>) -> String {
         // Create a new HMAC SHA256 instance with the secret key
         let mut mac = Hmac::<Sha256>::new_from_slice(self.secret_key.as_bytes()).unwrap();
-        
+
         // Create the sign message by concatenating the timestamp, API key, and receive window
         let mut sign_message = format!("{}{}{}", timestamp, self.api_key, recv_window);
-        
+
         // If a request body is provided, append it to the sign message
         if let Some(req) = request {
             sign_message.push_str(&req);
         }
-        
+
         // Update the MAC with the sign message
         mac.update(sign_message.as_bytes());
-        
+
         // Finalize the MAC and encode the result as a hex string
         let hex_signature = hex_encode(mac.finalize().into_bytes());
 
@@ -346,7 +344,7 @@ impl<'a> Client<'_> {
     ) -> String {
         // Create a new HMAC SHA256 instance with the secret key
         let mut mac = Hmac::<Sha256>::new_from_slice(self.secret_key.as_bytes()).unwrap();
-        
+
         // Update the MAC with the timestamp
         mac.update(timestamp.as_bytes());
         // Update the MAC with the API key
@@ -357,7 +355,7 @@ impl<'a> Client<'_> {
         if let Some(req) = request {
             mac.update(req.as_bytes());
         }
-        
+
         // Finalize the MAC and encode the result as a hex string
         let hex_signature = hex_encode(mac.finalize().into_bytes());
 
