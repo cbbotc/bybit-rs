@@ -1404,7 +1404,7 @@ pub struct AmendOrderRequest<'a> {
     pub order_link_id: Option<Cow<'a, str>>,
     pub order_iv: Option<f64>, // String
     pub trigger_price: Option<f64>,
-    pub qty: f64,           // String
+    pub qty: Option<f64>,   // String
     pub price: Option<f64>, // String
     pub tpsl_mode: Option<Cow<'a, str>>,
     pub take_profit: Option<f64>,
@@ -1425,7 +1425,7 @@ impl<'a> AmendOrderRequest<'a> {
             order_link_id: None,
             order_iv: None,
             trigger_price: None,
-            qty: 0.00,
+            qty: None,
             price: None,
             tpsl_mode: None,
             take_profit: None,
@@ -1444,7 +1444,7 @@ impl<'a> AmendOrderRequest<'a> {
         order_link_id: Option<&'a str>,
         order_iv: Option<f64>,
         trigger_price: Option<f64>,
-        qty: f64,
+        qty: Option<f64>,
         price: Option<f64>,
         tpsl_mode: Option<&'a str>,
         take_profit: Option<f64>,
