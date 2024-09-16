@@ -1,6 +1,6 @@
 #![allow(unused_imports)]
 use crate::errors::BybitError;
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Deserializer, Serialize};
 use serde_json::{from_value, Value};
 use std::{borrow::Cow, collections::BTreeMap};
 use thiserror::Error;
@@ -907,13 +907,15 @@ pub struct RiskLimit {
     #[serde(rename = "riskLimitValue", with = "string_to_float")]
     pub risk_limit_value: f64,
     #[serde(rename = "maintenanceMargin", with = "string_to_float")]
-    pub maintainence_margin: f64,
+    pub maintenance_margin: f64,
     #[serde(rename = "initialMargin", with = "string_to_float")]
     pub initial_margin: f64,
     #[serde(rename = "isLowestRisk")]
     pub is_lowest_risk: u8,
     #[serde(rename = "maxLeverage")]
     pub max_leverage: String,
+    #[serde(rename = "mmDeduction", with = "string_to_float")]
+    pub mm_deduction: f64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
