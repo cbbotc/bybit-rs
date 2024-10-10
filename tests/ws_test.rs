@@ -29,7 +29,7 @@ mod tests {
 
     #[tokio::test]
     async fn ping() {
-   let ws: Stream = Bybit::new(Some(API_KEY.into()), Some(SECRET.into()));
+        let ws: Stream = Bybit::new(Some(API_KEY.into()), Some(SECRET.into()));
         let response = ws.ws_ping(true).await;
         println!("{:#?}", response);
     }
@@ -43,7 +43,7 @@ mod tests {
         };
 
         let response = ws
-            .ws_subscribe(request, Category::Linear, |event| {
+            .ws_subscribe(request, Category::Linear, &mut |event| {
                 match event {
                     WebsocketEvents::TradeEvent(trade) => {
                         // Handle Trade

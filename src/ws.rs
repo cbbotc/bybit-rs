@@ -43,7 +43,7 @@ impl<'a> Stream<'_> {
         };
         let mut response = self
             .client
-            .wss_connect(endpoint, Some(request), private, None)
+            .wss_connect(&endpoint, Some(request), private, None)
             .await?;
         let data = response.next().await.unwrap()?;
         match data {
@@ -66,7 +66,7 @@ impl<'a> Stream<'_> {
     pub async fn ws_priv_subscribe<'b, F>(
         &self,
         req: Subscription<'_>,
-        handler: F,
+        handler: &mut F,
     ) -> Result<(), BybitError>
     where
         F: FnMut(WebsocketEvents) -> Result<(), BybitError> + 'static + Send,
@@ -74,7 +74,7 @@ impl<'a> Stream<'_> {
         let request = Self::build_subscription(req);
         let response = self
             .client
-            .wss_connect(WebsocketAPI::Private, Some(request), true, Some(10))
+            .wss_connect(&WebsocketAPI::Private, Some(request), true, Some(10))
             .await?;
         match Self::event_loop(response, handler, None).await {
             Ok(_) => {}
@@ -87,7 +87,7 @@ impl<'a> Stream<'_> {
         &self,
         req: Subscription<'_>,
         category: Category,
-        handler: F,
+        handler: &mut F,
     ) -> Result<(), BybitError>
     where
         F: FnMut(WebsocketEvents) -> Result<(), BybitError> + 'static + Send,
@@ -101,11 +101,22 @@ impl<'a> Stream<'_> {
             }
         };
         let request = Self::build_subscription(req);
-        let response = self
-            .client
-            .wss_connect(endpoint, Some(request), false, None)
-            .await?;
-        Self::event_loop(response, handler, None).await?;
+        loop {
+            let response = self
+                .client
+                .wss_connect(&endpoint, Some(request.clone()), false, None)
+                .await;
+            match response {
+                Ok(stream) => {
+                    Self::event_loop(stream, handler, None).await?;
+                }
+                Err(e) => {
+                    println!("Error connecting to stream: {}", e);
+                }
+            }
+            tokio::time::sleep(Duration::from_secs(5)).await;
+        }
+
         Ok(())
     }
 
@@ -185,7 +196,7 @@ impl<'a> Stream<'_> {
             .map(|(num, sym)| format!("orderbook.{}.{}", num, sym.to_uppercase()))
             .collect();
         let request = Subscription::new("subscribe", arr.iter().map(AsRef::as_ref).collect());
-        self.ws_subscribe(request, category, move |event| {
+        self.ws_subscribe(request, category, &mut move |event| {
             if let WebsocketEvents::OrderBookEvent(order_book) = event {
                 sender.send(order_book).unwrap();
             }
@@ -219,7 +230,7 @@ impl<'a> Stream<'_> {
             .map(|&sub| format!("publicTrade.{}", sub.to_uppercase()))
             .collect();
         let request = Subscription::new("subscribe", arr.iter().map(AsRef::as_ref).collect());
-        let handler = move |event| {
+        let mut handler = move |event| {
             if let WebsocketEvents::TradeEvent(trades) = event {
                 for trade in trades.data {
                     sender.send(trade).unwrap();
@@ -228,7 +239,7 @@ impl<'a> Stream<'_> {
             Ok(())
         };
 
-        self.ws_subscribe(request, category, handler).await
+        self.ws_subscribe(request, category, &mut handler).await
     }
 
     /// Subscribes to ticker events for the specified symbols and category.
@@ -259,7 +270,7 @@ impl<'a> Stream<'_> {
             .collect();
         let request = Subscription::new("subscribe", arr.iter().map(String::as_str).collect());
 
-        let handler = move |event| {
+        let mut handler = move |event| {
             if let WebsocketEvents::TickerEvent(tickers) = event {
                 match tickers.data {
                     Tickers::Linear(linear_ticker) => {
@@ -271,7 +282,7 @@ impl<'a> Stream<'_> {
             Ok(())
         };
 
-        self.ws_subscribe(request, category, handler).await
+        self.ws_subscribe(request, category, &mut handler).await
     }
     pub async fn ws_liquidations(
         &self,
@@ -285,14 +296,14 @@ impl<'a> Stream<'_> {
             .collect();
         let request = Subscription::new("subscribe", arr.iter().map(String::as_str).collect());
 
-        let handler = move |event| {
+        let mut handler = move |event| {
             if let WebsocketEvents::LiquidationEvent(liquidation) = event {
                 sender.send(liquidation.data).unwrap();
             }
             Ok(())
         };
 
-        self.ws_subscribe(request, category, handler).await
+        self.ws_subscribe(request, category, &mut handler).await
     }
     pub async fn ws_klines(
         &self,
@@ -305,7 +316,7 @@ impl<'a> Stream<'_> {
             .map(|(interval, sym)| format!("kline.{}.{}", interval, sym.to_uppercase()))
             .collect();
         let request = Subscription::new("subscribe", arr.iter().map(AsRef::as_ref).collect());
-        self.ws_subscribe(request, category, move |event| {
+        self.ws_subscribe(request, category, &mut move |event| {
             if let WebsocketEvents::KlineEvent(kline) = event {
                 sender.send(kline).unwrap();
             }
@@ -330,7 +341,7 @@ impl<'a> Stream<'_> {
         };
 
         let request = Subscription::new("subscribe", vec![sub_str]);
-        self.ws_priv_subscribe(request, move |event| {
+        self.ws_priv_subscribe(request, &mut move |event| {
             if let WebsocketEvents::PositionEvent(position) = event {
                 for v in position.data {
                     sender.send(v).unwrap();
@@ -358,7 +369,7 @@ impl<'a> Stream<'_> {
         };
 
         let request = Subscription::new("subscribe", vec![sub_str]);
-        self.ws_priv_subscribe(request, move |event| {
+        self.ws_priv_subscribe(request, &mut move |event| {
             if let WebsocketEvents::ExecutionEvent(execute) = event {
                 for v in execute.data {
                     sender.send(v).unwrap();
@@ -376,7 +387,7 @@ impl<'a> Stream<'_> {
         let sub_str = "execution.fast";
         let request = Subscription::new("subscribe", vec![sub_str]);
 
-        self.ws_priv_subscribe(request, move |event| {
+        self.ws_priv_subscribe(request, &mut move |event| {
             if let WebsocketEvents::FastExecEvent(execution) = event {
                 for v in execution.data {
                     sender.send(v).unwrap();
@@ -404,7 +415,7 @@ impl<'a> Stream<'_> {
         };
 
         let request = Subscription::new("subscribe", vec![sub_str]);
-        self.ws_priv_subscribe(request, move |event| {
+        self.ws_priv_subscribe(request, &mut move |event| {
             if let WebsocketEvents::OrderEvent(order) = event {
                 for v in order.data {
                     sender.send(v).unwrap();
@@ -421,7 +432,7 @@ impl<'a> Stream<'_> {
     ) -> Result<(), BybitError> {
         let sub_str = "wallet";
         let request = Subscription::new("subscribe", vec![sub_str]);
-        self.ws_priv_subscribe(request, move |event| {
+        self.ws_priv_subscribe(request, &mut move |event| {
             if let WebsocketEvents::Wallet(wallet) = event {
                 for v in wallet.data {
                     sender.send(v).unwrap();
@@ -435,7 +446,7 @@ impl<'a> Stream<'_> {
     pub async fn ws_trade_stream<'b, F>(
         &self,
         req: mpsc::UnboundedReceiver<RequestType<'_>>,
-        handler: F,
+        handler: &mut F,
     ) -> Result<(), BybitError>
     where
         F: FnMut(WebsocketEvents) -> Result<(), BybitError> + 'static + Send,
@@ -443,7 +454,7 @@ impl<'a> Stream<'_> {
     {
         let response = self
             .client
-            .wss_connect(WebsocketAPI::TradeStream, None, true, Some(10))
+            .wss_connect(&WebsocketAPI::TradeStream, None, true, Some(10))
             .await?;
         Self::event_loop(response, handler, Some(req)).await?;
 
@@ -452,7 +463,7 @@ impl<'a> Stream<'_> {
 
     pub async fn event_loop<'b, H>(
         mut stream: WebSocketStream<MaybeTlsStream<TcpStream>>,
-        mut handler: H,
+        handler: &mut H,
         mut order_sender: Option<mpsc::UnboundedReceiver<RequestType<'_>>>,
     ) -> Result<(), BybitError>
     where
@@ -484,7 +495,7 @@ impl<'a> Stream<'_> {
                 }
             }
 
-            if interval.elapsed() > Duration::from_secs(300) {
+            if interval.elapsed() > Duration::from_secs(20) {
                 let mut parameters: BTreeMap<String, Value> = BTreeMap::new();
                 if order_sender.is_none() {
                     parameters.insert("req_id".into(), generate_random_uid(8).into());

@@ -208,6 +208,13 @@ impl<'a> Client<'_> {
 
         // Make the signed HTTP POST request
         let client = &self.inner_client;
+        // if !url.starts_with("https://api.bybit.com/v5/position/set-leverage") {
+        //     println!(
+        //         "raw_request_body: {}",
+        //         raw_request_body.clone().unwrap_or_default()
+        //     );
+        // }
+
         let response = client
             .post(url)
             .headers(headers)
@@ -388,6 +395,23 @@ impl<'a> Client<'_> {
         match response.status() {
             // If the status code is OK, deserialize the response body into T and return it
             StatusCode::OK => {
+                // let url = response.url().to_string();
+                // let text = response.text().await?;
+                // if !url.starts_with("https://api.bybit.com/v5/market/instruments-info")
+                //     && !url.starts_with("https://api.bybit.com/v5/position/set-leverage")
+                // {
+                //     println!("");
+                //     println!("url: {}", url);
+                //     println!("");
+                //     let text_to_print = text.clone().replace("\\", "");
+                //     println!("response: {}", text_to_print);
+                //     println!("");
+                //     println!("");
+                //     println!("");
+                // }
+
+                // let res = serde_json::from_str(&text).map_err(BybitError::from)?;
+                // Ok(res)
                 let response = response.json::<T>().await?;
                 Ok(response)
             }
@@ -424,7 +448,7 @@ impl<'a> Client<'_> {
     /// are successful, or a `BybitError` if an error occurs.
     pub async fn wss_connect(
         &self,
-        endpoint: WebsocketAPI,
+        endpoint: &WebsocketAPI,
         request_body: Option<String>,
         private: bool,
         alive_dur: Option<u16>,

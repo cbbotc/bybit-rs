@@ -412,7 +412,7 @@ impl<'a> Bybit<'a> for Stream<'a> {
         config: &Config,
         api_key: Option<Cow<'_, str>>,
         secret_key: Option<Cow<'_, str>>,
-    ) -> Stream <'a>{
+    ) -> Stream<'a> {
         Stream {
             client: Client::new(api_key, secret_key, config.ws_endpoint.to_string()),
         }
